@@ -10,7 +10,7 @@ Paste a URL or subscribe an RSS feed → 5 specialized agents (Extractor → New
 modules-custom/skim/         # The full ARI custom module (drop-in)
   ├── module.json            # Manifest (registers routes, schema, widgets)
   ├── database/schema.sql    # Idempotent schema for skim_sources + skim_articles
-  ├── lib/agents.ts          # The 5-agent OpenAI pipeline
+  ├── lib/agents.ts          # The 5-agent Groq/Llama pipeline
   ├── api/                   # sources, articles, settings routes (RLS + Zod)
   ├── app/                   # /skim feed, /skim/sources, /skim/settings pages
   ├── components/            # cards, drawer, agent pipeline animation, widget
@@ -33,10 +33,10 @@ pnpm add rss-parser@^3.13.0      # or visit /modules in ARI and re-install
 ./ari start
 ```
 
-Then enable Skim from `/modules` and set your OpenAI key in `/settings`. The schema auto-applies on first boot (idempotent SQL).
+Then enable Skim from `/modules`, grab a free [Groq API key](https://console.groq.com), and add it to `.env.local` as `GROQ_API_KEY=…`. The schema auto-applies on first boot (idempotent SQL).
 
 ## Tech stack
 
-Next.js 16 · React 19 · Drizzle ORM (with `withRLS()`) · Better Auth · OpenAI `gpt-4o-mini` (direct `fetch`, no SDK) · TanStack Query · rss-parser · shadcn/ui + Tailwind.
+Next.js 16 · React 19 · Drizzle ORM (with `withRLS()`) · Better Auth · **Groq** (`llama-3.3-70b-versatile` default, `llama-3.1-8b-instant` opt-in) — OpenAI-compatible endpoint, direct `fetch`, no SDK · TanStack Query · rss-parser · shadcn/ui + Tailwind.
 
 See [docs/skim-hackathon/architecture.md](docs/skim-hackathon/architecture.md) for the full pipeline diagram and [docs/skim-hackathon/pitch.md](docs/skim-hackathon/pitch.md) for the demo script.

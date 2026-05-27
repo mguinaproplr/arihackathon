@@ -18,5 +18,5 @@ export async function getSkimModel(userId: string, withRLS: RLSFn): Promise<Pipe
       .limit(1),
   )
   const stored = (rows[0]?.settings ?? {}) as { aiModel?: PipelineModel }
-  return stored.aiModel === 'gpt-4o' ? 'gpt-4o' : DEFAULT_SKIM_MODEL
+  return stored.aiModel === 'llama-3.1-8b-instant' ? 'llama-3.1-8b-instant' : DEFAULT_SKIM_MODEL
 }

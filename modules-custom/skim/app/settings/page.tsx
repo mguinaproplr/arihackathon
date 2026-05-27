@@ -67,7 +67,7 @@ export default function SkimSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">AI model</CardTitle>
-          <CardDescription>Used by every agent in the pipeline. gpt-4o-mini is fast and cheap; gpt-4o is sharper but slower.</CardDescription>
+          <CardDescription>Used by every agent in the pipeline. Both models are free on Groq.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           <Label htmlFor="model">Model</Label>
@@ -76,12 +76,12 @@ export default function SkimSettingsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="gpt-4o-mini">gpt-4o-mini (recommended)</SelectItem>
-              <SelectItem value="gpt-4o">gpt-4o</SelectItem>
+              <SelectItem value="llama-3.3-70b-versatile">llama-3.3-70b (recommended)</SelectItem>
+              <SelectItem value="llama-3.1-8b-instant">llama-3.1-8b (faster)</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Requires <code className="px-1 py-0.5 rounded bg-muted text-xs">OPENAI_API_KEY</code> in <code className="px-1 py-0.5 rounded bg-muted text-xs">.env.local</code>.
+            Requires <code className="px-1 py-0.5 rounded bg-muted text-xs">GROQ_API_KEY</code> in <code className="px-1 py-0.5 rounded bg-muted text-xs">.env.local</code> — get a free key at <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" className="underline">console.groq.com</a>.
           </p>
         </CardContent>
       </Card>

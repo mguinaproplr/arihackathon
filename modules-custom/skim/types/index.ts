@@ -64,7 +64,7 @@ export interface SkimArticle {
 
 export interface SkimSettings {
   onboardingCompleted: boolean
-  aiModel: 'gpt-4o-mini' | 'gpt-4o'
+  aiModel: 'llama-3.3-70b-versatile' | 'llama-3.1-8b-instant'
 }
 
 export interface AgentBreakdown {

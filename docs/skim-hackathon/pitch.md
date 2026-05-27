@@ -36,7 +36,7 @@
 
 ## Talking points for Q&A
 
-- **Cost per article.** Five small `gpt-4o-mini` calls ≈ \$0.002–\$0.005. Negligible.
+- **Cost per article.** Five Llama 3.3 70B calls via Groq's free tier. **$0 for the demo**; if you ever paid for it, Groq's pricing makes it negligible per article.
 - **What about LinkedIn / Twitter / paywalled content.** The extractor falls back gracefully and surfaces the failure. Future: paste raw text directly.
 - **Why on-demand refresh, not background polling.** v1 is intentionally synchronous so the user sees the agent team work. v2 wraps in a cron + queue.
 - **Security.** Standard ARI stack — Better Auth session, Drizzle `withRLS()`, RLS policies, Zod validation on every endpoint, OpenAPI-annotated routes visible in `/api-docs`.

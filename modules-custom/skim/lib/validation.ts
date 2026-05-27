@@ -138,7 +138,7 @@ export const ingestSchema = z
 export const SkimSettingsSchema = z
   .object({
     onboardingCompleted: z.boolean().optional(),
-    aiModel: z.enum(['gpt-4o-mini', 'gpt-4o']).optional(),
+    aiModel: z.enum(['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']).optional(),
   })
   .strict()
   .openapi('SkimSettings')

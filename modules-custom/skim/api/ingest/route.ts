@@ -18,7 +18,7 @@ registry.registerPath({
   method: 'post',
   path: '/api/modules/skim/ingest',
   operationId: 'ingestSkimUrl',
-  summary: 'Paste a URL and run the full agent pipeline (extract + 4 OpenAI agents)',
+  summary: 'Paste a URL and run the full agent pipeline (extract + 4 Groq/Llama agents)',
   tags: ['skim'],
   security: DEFAULT_SECURITY,
   request: { body: { content: { 'application/json': { schema: ingestSchema } } } },

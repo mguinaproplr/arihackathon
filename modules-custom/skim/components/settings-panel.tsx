@@ -61,12 +61,12 @@ export function SkimSettingsPanel() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="gpt-4o-mini">gpt-4o-mini (recommended)</SelectItem>
-            <SelectItem value="gpt-4o">gpt-4o</SelectItem>
+            <SelectItem value="llama-3.3-70b-versatile">llama-3.3-70b (recommended)</SelectItem>
+            <SelectItem value="llama-3.1-8b-instant">llama-3.1-8b (faster)</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Used by every agent. Requires <code className="px-1 py-0.5 rounded bg-muted text-xs">OPENAI_API_KEY</code>.
+          Used by every agent. Requires <code className="px-1 py-0.5 rounded bg-muted text-xs">GROQ_API_KEY</code>.
         </p>
       </div>
 

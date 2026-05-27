@@ -14,7 +14,7 @@ flowchart LR
     A1 --> B[Fetch + Extract<br/>HTML → clean text]
     A2 --> B
 
-    subgraph Pipeline["AI AGENT TEAM — OpenAI"]
+    subgraph Pipeline["AI AGENT TEAM — Groq (Llama 3.3 70B)"]
       B --> C[News Distiller<br/>⚡ catchy title + The News]
       C --> D[Builder-Angle Agent<br/>Why It Matters to a Builder]
       D --> E[ARI Spark Agent<br/>Idea: Build a custom [Module] in ARI…]
@@ -54,7 +54,7 @@ Specialization = sharper output than any single-shot prompt. The output schema i
 | Module manifest | `modules-custom/skim/module.json` |
 | Database schema (idempotent) | `modules-custom/skim/database/schema.sql` |
 | Drizzle ORM tables | `modules-custom/skim/database/schema.ts` |
-| Agent pipeline (5 OpenAI calls) | `modules-custom/skim/lib/agents.ts` |
+| Agent pipeline (5 Groq calls) | `modules-custom/skim/lib/agents.ts` |
 | RSS parser | `modules-custom/skim/lib/rss.ts` |
 | API routes | `modules-custom/skim/api/{sources,articles,ingest,settings}/` |
 | Feed UI | `modules-custom/skim/app/page.tsx` |
@@ -66,7 +66,7 @@ Specialization = sharper output than any single-shot prompt. The output schema i
 - **Next.js 16** + React 19 + TypeScript
 - **Drizzle ORM** with per-user RLS via `withRLS()`
 - **Better Auth** session cookies (no Authorization header needed)
-- **OpenAI** (`gpt-4o-mini` default, `gpt-4o` opt-in) — direct `fetch` to `/v1/chat/completions`, no SDK
+- **Groq** (`llama-3.3-70b-versatile` default, `llama-3.1-8b-instant` opt-in) — direct `fetch` to Groq's OpenAI-compatible `/v1/chat/completions`, no SDK. Free tier covers the demo.
 - **TanStack Query** for caching, optimistic updates
 - **rss-parser** for feed ingestion
 - **shadcn/ui** components, Tailwind CSS

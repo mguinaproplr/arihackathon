@@ -1,4 +1,4 @@
-// Skim — the multi-agent OpenAI pipeline.
+// Skim — the multi-agent LLM pipeline (Groq via OpenAI-compatible endpoint).
 //
 // Server-only. Called from /api/modules/skim/ingest and /api/modules/skim/sources/refresh.
 // Each article passes through a small team of focused agents, each with a single job.
@@ -7,10 +7,11 @@
 import type { AgentBreakdown, SkimPillar } from '../types'
 import { SKIM_PILLARS } from '../types'
 
-const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
-const DEFAULT_MODEL = 'gpt-4o-mini'
+// Groq's OpenAI-compatible endpoint. Free tier at console.groq.com.
+const LLM_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
 const FETCH_TIMEOUT_MS = 15000
-const OPENAI_TIMEOUT_MS = 30000
+const LLM_TIMEOUT_MS = 30000
 const MAX_EXTRACT_CHARS = 12000
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024 // hard cap on remote article HTML
 
@@ -24,7 +25,7 @@ const MAX_INSPIRATION_CHARS = 500
 const MAX_TAG_CHARS = 40
 const MAX_TAG_COUNT = 8
 
-export type PipelineModel = 'gpt-4o-mini' | 'gpt-4o'
+export type PipelineModel = 'llama-3.3-70b-versatile' | 'llama-3.1-8b-instant'
 
 export class AgentPipelineError extends Error {
   constructor(public stage: string, message: string) {
@@ -179,26 +180,26 @@ async function readResponseCapped(res: Response, maxBytes: number): Promise<stri
   return new TextDecoder('utf-8', { fatal: false }).decode(merged)
 }
 
-// ─── OpenAI call helper ─────────────────────────────────────────────────
+// ─── LLM call helper (Groq via OpenAI-compatible endpoint) ──────────────
 async function callAgent(
   stage: string,
   model: PipelineModel,
   systemPrompt: string,
   userContent: string,
 ): Promise<Record<string, unknown>> {
-  const apiKey = process.env.OPENAI_API_KEY
+  const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
     throw new AgentPipelineError(
       stage,
-      'OPENAI_API_KEY is not configured. Add it to .env.local to run the Skim agent pipeline.',
+      'GROQ_API_KEY is not configured. Add it to .env.local to run the Skim agent pipeline. Get a free key at https://console.groq.com.',
     )
   }
 
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS)
 
   try {
-    const res = await fetch(OPENAI_ENDPOINT, {
+    const res = await fetch(LLM_ENDPOINT, {
       method: 'POST',
       signal: controller.signal,
       headers: {
@@ -217,18 +218,18 @@ async function callAgent(
     })
     if (!res.ok) {
       const detail = await res.text().catch(() => '')
-      throw new AgentPipelineError(stage, `OpenAI returned ${res.status}: ${detail.slice(0, 200)}`)
+      throw new AgentPipelineError(stage, `Groq returned ${res.status}: ${detail.slice(0, 200)}`)
     }
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
     const content = json.choices?.[0]?.message?.content
     if (!content) {
-      throw new AgentPipelineError(stage, 'OpenAI returned no content')
+      throw new AgentPipelineError(stage, 'Groq returned no content')
     }
     return JSON.parse(content) as Record<string, unknown>
   } catch (err) {
     if (err instanceof AgentPipelineError) throw err
     if (err instanceof SyntaxError) {
-      throw new AgentPipelineError(stage, 'OpenAI returned non-JSON content')
+      throw new AgentPipelineError(stage, 'Groq returned non-JSON content')
     }
     const message = err instanceof Error ? err.message : 'Unknown agent error'
     throw new AgentPipelineError(stage, message)
