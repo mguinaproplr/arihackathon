@@ -1,0 +1,50 @@
+{
+  "id": "skim",
+  "group": "Discover",
+  "name": "Skim",
+  "description": "An AI agent team that turns emerging tech news into actionable ARI module ideas. Paste a URL, get a builder-focused breakdown, and ship a custom module in minutes.",
+  "version": "1.0.0",
+  "author": "ARI",
+  "icon": "Newspaper",
+  "enabled": false,
+  "fullscreen": false,
+  "menuPriority": 1,
+  "permissions": {
+    "database": true,
+    "api": true,
+    "dashboard": true
+  },
+  "routes": [
+    {
+      "path": "/skim",
+      "label": "Skim",
+      "icon": "Newspaper",
+      "sidebarPosition": "main"
+    }
+  ],
+  "dependencies": {
+    "modules": [],
+    "coreFeatures": []
+  },
+  "database": {
+    "tables": ["skim_sources", "skim_articles"]
+  },
+  "npmDependencies": {
+    "rss-parser": "^3.13.0"
+  },
+  "dashboard": {
+    "widgets": true,
+    "widgetComponents": ["./components/widget.tsx"]
+  },
+  "settings": {
+    "panel": "./components/settings-panel.tsx"
+  },
+  "topBarIcon": {
+    "icon": "Newspaper",
+    "route": "/skim",
+    "tooltip": "Skim — tech news, turned into modules"
+  },
+  "submenu": {
+    "component": "./components/sidebar-submenu.tsx"
+  }
+}
