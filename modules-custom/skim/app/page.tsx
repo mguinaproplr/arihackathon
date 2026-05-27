@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useModuleEnabled } from '@/lib/modules/module-hooks'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -30,18 +30,18 @@ import { PILLAR_LABELS, SKIM_PILLARS, type SkimArticle, type SkimPillar } from '
 import { ArticleCard } from '../components/article-card'
 import { ArticleDrawer } from '../components/article-drawer'
 import { AgentPipelineDialog } from '../components/agent-pipeline-animation'
+import { ONBOARDING_STARTER_SOURCES } from '../lib/constants'
 
-interface StarterSource {
-  name: string
-  feed_url: string
-  kind: 'rss' | 'hackernews' | 'reddit'
+// Tiny inline debounce — keeps the article search from refetching on every
+// keystroke. 250ms feels instant while collapsing N→1 query.
+function useDebouncedValue<T>(value: T, delay = 250): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(t)
+  }, [value, delay])
+  return debounced
 }
-
-const STARTER_SOURCES: StarterSource[] = [
-  { name: 'TLDR Tech', feed_url: 'https://tldr.tech/api/rss/tech', kind: 'rss' },
-  { name: 'Hacker News front page', feed_url: 'https://hnrss.org/frontpage', kind: 'hackernews' },
-  { name: 'r/MachineLearning', feed_url: 'https://www.reddit.com/r/MachineLearning/.rss', kind: 'reddit' },
-]
 
 export default function SkimPage() {
   const { toast } = useToast()
@@ -54,18 +54,20 @@ export default function SkimPage() {
 
   useEffect(() => {
     if (!quotesEnabled || quotesLoading) return
-    let cancelled = false
-    fetch('/api/modules/quotes/quotes')
+    const controller = new AbortController()
+    fetch('/api/modules/quotes/quotes', { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : []))
       .then((quotes: Array<{ quote: string; author?: string }>) => {
-        if (!cancelled && Array.isArray(quotes) && quotes.length > 0) {
+        if (Array.isArray(quotes) && quotes.length > 0) {
           setRandomQuote(quotes[Math.floor(Math.random() * quotes.length)])
         }
       })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
+      .catch((err) => {
+        if (err?.name !== 'AbortError') {
+          console.debug('[skim] random quote fetch failed:', err)
+        }
+      })
+    return () => controller.abort()
   }, [quotesEnabled, quotesLoading])
 
   if (settingsLoading) {
@@ -90,21 +92,22 @@ function OnboardingScreen({ onComplete, toastFn }: { onComplete: () => void; toa
 
   const handleAddStarterPack = async () => {
     setAdding(true)
+    // Fire all subscriptions in parallel — saves ~2x latency on first run.
+    const results = await Promise.allSettled(ONBOARDING_STARTER_SOURCES.map((src) => createSource.mutateAsync(src)))
     let added = 0
     let skipped = 0
-    for (const src of STARTER_SOURCES) {
-      try {
-        await createSource.mutateAsync(src)
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
         added += 1
-      } catch (err) {
-        const message = err instanceof Error ? err.message : ''
-        if (message.toLowerCase().includes('already')) {
-          skipped += 1
-        } else {
-          toastFn({ variant: 'destructive', title: `Could not add ${src.name}`, description: message })
-        }
+        return
       }
-    }
+      const message = r.reason instanceof Error ? r.reason.message : ''
+      if (message.toLowerCase().includes('already')) {
+        skipped += 1
+      } else {
+        toastFn({ variant: 'destructive', title: `Could not add ${ONBOARDING_STARTER_SOURCES[i].name}`, description: message })
+      }
+    })
     setAdding(false)
     toastFn({
       title: `${added} source${added === 1 ? '' : 's'} added`,
@@ -129,7 +132,7 @@ function OnboardingScreen({ onComplete, toastFn }: { onComplete: () => void; toa
         <CardContent className="space-y-4">
           <div className="rounded-md bg-muted/50 p-3 space-y-2">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Starter pack</p>
-            {STARTER_SOURCES.map((s) => (
+            {ONBOARDING_STARTER_SOURCES.map((s) => (
               <div key={s.feed_url} className="text-sm flex items-center justify-between gap-2">
                 <span>{s.name}</span>
                 <Badge variant="secondary" className="text-xs">{s.kind}</Badge>
@@ -154,6 +157,7 @@ function SkimFeed({ randomQuote }: { randomQuote: { quote: string; author?: stri
   const { toast } = useToast()
   const [pillar, setPillar] = useState<SkimPillar | 'all'>('all')
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 250)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState<SkimArticle | null>(null)
   const [buildDialogArticle, setBuildDialogArticle] = useState<SkimArticle | null>(null)
@@ -161,10 +165,10 @@ function SkimFeed({ randomQuote }: { randomQuote: { quote: string; author?: stri
   const filters = useMemo(
     () => ({
       pillar: pillar === 'all' ? undefined : (pillar as SkimPillar),
-      q: search.trim() || undefined,
+      q: debouncedSearch.trim() || undefined,
       limit: 100,
     }),
-    [pillar, search],
+    [pillar, debouncedSearch],
   )
 
   const { data: articles = [], isLoading } = useSkimArticles(filters)
@@ -176,26 +180,29 @@ function SkimFeed({ randomQuote }: { randomQuote: { quote: string; author?: stri
 
   const grouped = useMemo(() => groupByDate(articles), [articles])
 
-  const handleIngest = async (url: string) => {
-    try {
-      const article = await ingest.mutateAsync(url)
-      toast({
-        title: 'Article skimmed',
-        description: article.suggested_module_name
-          ? `New module idea: ${article.suggested_module_name}`
-          : 'Saved to your feed',
-      })
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Couldn’t skim that article',
-        description: err instanceof Error ? err.message : 'Unknown error',
-      })
-      throw err
-    }
-  }
+  const handleIngest = useCallback(
+    async (url: string) => {
+      try {
+        const article = await ingest.mutateAsync(url)
+        toast({
+          title: 'Article skimmed',
+          description: article.suggested_module_name
+            ? `New module idea: ${article.suggested_module_name}`
+            : 'Saved to your feed',
+        })
+      } catch (err) {
+        toast({
+          variant: 'destructive',
+          title: 'Couldn’t skim that article',
+          description: err instanceof Error ? err.message : 'Unknown error',
+        })
+        throw err
+      }
+    },
+    [ingest, toast],
+  )
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     if (sources.length === 0) {
       toast({ title: 'No sources yet', description: 'Add an RSS feed first from the Sources page.' })
       return
@@ -216,12 +223,25 @@ function SkimFeed({ randomQuote }: { randomQuote: { quote: string; author?: stri
         description: err instanceof Error ? err.message : 'Unknown error',
       })
     }
-  }
+  }, [sources.length, refresh, toast])
 
-  const openBuildDialog = (article: SkimArticle) => {
-    setBuildDialogArticle(article)
-    updateArticle.mutate({ id: article.id, has_built_module: true })
-  }
+  const openBuildDialog = useCallback(
+    (article: SkimArticle) => {
+      setBuildDialogArticle(article)
+      updateArticle.mutate({ id: article.id, has_built_module: true })
+    },
+    [updateArticle],
+  )
+
+  // Stable per-card handlers. ArticleCard is memo'd so unchanged refs avoid
+  // re-rendering every card on each parent render.
+  const handleCardOpen = useCallback(
+    (article: SkimArticle) => {
+      setSelectedArticle(article)
+      if (!article.is_read) updateArticle.mutate({ id: article.id, is_read: true })
+    },
+    [updateArticle],
+  )
 
   return (
     <div className="p-6 space-y-6">
@@ -259,11 +279,11 @@ function SkimFeed({ randomQuote }: { randomQuote: { quote: string; author?: stri
           />
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto">
-          <PillarChip value="all" active={pillar === 'all'} onClick={() => setPillar('all')}>
+          <PillarChip active={pillar === 'all'} onClick={() => setPillar('all')}>
             All
           </PillarChip>
           {SKIM_PILLARS.filter((p) => p !== 'other').map((p) => (
-            <PillarChip key={p} value={p} active={pillar === p} onClick={() => setPillar(p)}>
+            <PillarChip key={p} active={pillar === p} onClick={() => setPillar(p)}>
               {PILLAR_LABELS[p]}
             </PillarChip>
           ))}
@@ -287,10 +307,7 @@ function SkimFeed({ randomQuote }: { randomQuote: { quote: string; author?: stri
                   <ArticleCard
                     key={article.id}
                     article={article}
-                    onOpen={() => {
-                      setSelectedArticle(article)
-                      if (!article.is_read) updateArticle.mutate({ id: article.id, is_read: true })
-                    }}
+                    onOpen={() => handleCardOpen(article)}
                     onBuildModule={() => openBuildDialog(article)}
                   />
                 ))}
@@ -300,10 +317,8 @@ function SkimFeed({ randomQuote }: { randomQuote: { quote: string; author?: stri
         </div>
       )}
 
-      {/* Paste dialog with agent animation */}
       <AgentPipelineDialog open={pasteOpen} onOpenChange={setPasteOpen} onSubmit={handleIngest} />
 
-      {/* Article drawer */}
       <ArticleDrawer
         article={selectedArticle}
         open={selectedArticle !== null}
@@ -329,25 +344,15 @@ function SkimFeed({ randomQuote }: { randomQuote: { quote: string; author?: stri
         }}
       />
 
-      {/* Build-this-module dialog: closes the loop into /ari-create-module */}
       <BuildModuleDialog article={buildDialogArticle} onClose={() => setBuildDialogArticle(null)} />
     </div>
   )
 }
 
-// ─── Sub-components ─────────────────────────────────────────────────────
-function PillarChip({
-  active,
-  onClick,
-  children,
-}: {
-  value: string
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
+function PillarChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
         'px-3 py-1 text-xs rounded-full whitespace-nowrap border transition-colors',
@@ -390,11 +395,24 @@ function EmptyState({ onPaste, hasSources, onRefresh }: { onPaste: () => void; h
 function BuildModuleDialog({ article, onClose }: { article: SkimArticle | null; onClose: () => void }) {
   const { toast } = useToast()
   const [copied, setCopied] = useState(false)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const open = article !== null
 
   useEffect(() => {
-    if (!open) setCopied(false)
+    if (!open) {
+      setCopied(false)
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current)
+        copyTimerRef.current = null
+      }
+    }
   }, [open])
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    }
+  }, [])
 
   if (!article) return null
 
@@ -406,7 +424,8 @@ function BuildModuleDialog({ article, onClose }: { article: SkimArticle | null; 
       await navigator.clipboard.writeText(command)
       setCopied(true)
       toast({ title: 'Copied to clipboard', description: 'Paste it into Claude Code in your ARI project.' })
-      setTimeout(() => setCopied(false), 2500)
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2500)
     } catch {
       toast({ variant: 'destructive', title: 'Could not copy', description: 'Select the text manually instead.' })
     }
@@ -439,7 +458,9 @@ function BuildModuleDialog({ article, onClose }: { article: SkimArticle | null; 
   )
 }
 
-// ─── Grouping ───────────────────────────────────────────────────────────
+// Groups today / this week / older. Recomputed on each `articles` change;
+// time-of-day rollover is acceptable here since the page typically re-fetches
+// before that becomes user-visible.
 function groupByDate(articles: SkimArticle[]): Array<[string, SkimArticle[]]> {
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()

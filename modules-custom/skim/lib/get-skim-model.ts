@@ -6,12 +6,11 @@ import { and, eq } from 'drizzle-orm'
 import type { PipelineModel } from './agents'
 import { DEFAULT_SKIM_MODEL } from './constants'
 
-interface RLSFn {
-  <T>(fn: (db: any) => Promise<T>): Promise<T>
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RLSFn = <T>(fn: (db: any) => Promise<T>) => Promise<T>
 
 export async function getSkimModel(userId: string, withRLS: RLSFn): Promise<PipelineModel> {
-  const rows = await withRLS((db) =>
+  const rows = await withRLS<Array<{ settings: unknown }>>((db) =>
     db
       .select({ settings: moduleSettings.settings })
       .from(moduleSettings)

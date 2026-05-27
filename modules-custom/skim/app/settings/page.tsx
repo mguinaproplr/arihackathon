@@ -16,8 +16,7 @@ import { Loader2, RotateCcw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useSkimSources, useSkimArticles, useSkimSettings, useUpdateSkimSettings } from '../../hooks/use-skim'
 import type { SkimSettings } from '../../types'
-
-const DEFAULT_MODEL: SkimSettings['aiModel'] = 'gpt-4o-mini'
+import { DEFAULT_SKIM_MODEL } from '../../lib/constants'
 
 export default function SkimSettingsPage() {
   const { toast } = useToast()
@@ -26,7 +25,7 @@ export default function SkimSettingsPage() {
   const { data: sources = [] } = useSkimSources()
   const { data: articles = [] } = useSkimArticles({ limit: 200 })
 
-  const model = settings?.aiModel ?? DEFAULT_MODEL
+  const model = settings?.aiModel ?? DEFAULT_SKIM_MODEL
 
   const handleModelChange = (value: SkimSettings['aiModel']) => {
     updateSettings.mutate(

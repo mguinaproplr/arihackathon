@@ -36,6 +36,18 @@ export function AgentPipelineDialog({ open, onOpenChange, onSubmit }: AgentPipel
   const [processing, setProcessing] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearTimers = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
 
   useEffect(() => {
     if (!open) {
@@ -43,16 +55,12 @@ export function AgentPipelineDialog({ open, onOpenChange, onSubmit }: AgentPipel
       setError(null)
       setProcessing(false)
       setCurrentStep(0)
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      clearTimers()
     }
   }, [open])
 
-  const clearTimer = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-  }
+  // Belt-and-braces cleanup on unmount in case the parent yanks us mid-flow.
+  useEffect(() => () => clearTimers(), [])
 
   const validate = (value: string): string | null => {
     const trimmed = value.trim()
@@ -82,12 +90,12 @@ export function AgentPipelineDialog({ open, onOpenChange, onSubmit }: AgentPipel
 
     try {
       await onSubmit(url.trim())
-      // Fast-forward animation if API beat it
-      clearTimer()
+      // Fast-forward animation if API beat it.
+      clearTimers()
       setCurrentStep(AGENT_STEPS.length)
-      setTimeout(() => onOpenChange(false), 500)
+      closeTimerRef.current = setTimeout(() => onOpenChange(false), 500)
     } catch (err) {
-      clearTimer()
+      clearTimers()
       setProcessing(false)
       setCurrentStep(0)
       setError(err instanceof Error ? err.message : 'Something went wrong')

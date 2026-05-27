@@ -18,6 +18,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 const idParam = z.string().uuid('Invalid article id')
+const idPathParams = z.object({ id: idParam }).openapi({ param: { name: 'id', in: 'path' } })
 
 registry.registerPath({
   method: 'get',
@@ -26,6 +27,7 @@ registry.registerPath({
   summary: 'Fetch a single Skim article',
   tags: ['skim'],
   security: DEFAULT_SECURITY,
+  request: { params: idPathParams },
   responses: {
     200: { description: 'Article', content: { 'application/json': { schema: ArticleSingleResponseSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
@@ -41,7 +43,7 @@ registry.registerPath({
   summary: 'Update read / saved / has-built-module flags',
   tags: ['skim'],
   security: DEFAULT_SECURITY,
-  request: { body: { content: { 'application/json': { schema: updateArticleSchema } } } },
+  request: { params: idPathParams, body: { content: { 'application/json': { schema: updateArticleSchema } } } },
   responses: {
     200: { description: 'Updated article', content: { 'application/json': { schema: ArticleSingleResponseSchema } } },
     400: { description: 'Validation error', content: { 'application/json': { schema: ErrorResponseSchema } } },
@@ -58,6 +60,7 @@ registry.registerPath({
   summary: 'Delete a Skim article',
   tags: ['skim'],
   security: DEFAULT_SECURITY,
+  request: { params: idPathParams },
   responses: {
     200: { description: 'Deleted', content: { 'application/json': { schema: DeleteSuccessSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },

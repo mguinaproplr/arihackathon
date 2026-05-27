@@ -28,6 +28,8 @@ import {
   useRefreshSkimSources,
 } from '../../hooks/use-skim'
 import type { SkimSourceKind } from '../../types'
+import { STARTER_SOURCES } from '../../lib/constants'
+import { validateHttpUrl } from '../../lib/format'
 
 interface FormState {
   name: string
@@ -36,13 +38,6 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = { name: '', feed_url: '', kind: 'rss' }
-
-const STARTER_SOURCES: Array<{ name: string; feed_url: string; kind: SkimSourceKind }> = [
-  { name: 'TLDR Tech', feed_url: 'https://tldr.tech/api/rss/tech', kind: 'rss' },
-  { name: 'Hacker News front page', feed_url: 'https://hnrss.org/frontpage', kind: 'hackernews' },
-  { name: 'r/MachineLearning', feed_url: 'https://www.reddit.com/r/MachineLearning/.rss', kind: 'reddit' },
-  { name: 'r/LocalLLaMA', feed_url: 'https://www.reddit.com/r/LocalLLaMA/.rss', kind: 'reddit' },
-]
 
 export default function SkimSourcesPage() {
   const { toast } = useToast()
@@ -60,15 +55,8 @@ export default function SkimSourcesPage() {
     const e: Partial<Record<keyof FormState, string>> = {}
     if (!f.name.trim()) e.name = 'Source name is required'
     else if (f.name.length > 120) e.name = 'Source name must be 120 characters or fewer'
-    if (!f.feed_url.trim()) e.feed_url = 'Feed URL is required'
-    else {
-      try {
-        const u = new URL(f.feed_url.trim())
-        if (!/^https?:$/i.test(u.protocol)) e.feed_url = 'URL must start with http:// or https://'
-      } catch {
-        e.feed_url = 'That doesn’t look like a valid URL'
-      }
-    }
+    const urlError = validateHttpUrl(f.feed_url)
+    if (urlError) e.feed_url = urlError
     return e
   }
 

@@ -5,19 +5,13 @@
 
 'use client'
 
+import { memo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Bookmark, Sparkles, Wrench, Zap, AlertCircle, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { PILLAR_LABELS, type SkimArticle, type SkimPillar } from '@/modules/skim/types'
-
-const PILLAR_CLASSES: Record<SkimPillar, string> = {
-  'ai-llms': 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800',
-  'automation': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800',
-  'productivity': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
-  'nocode-ai': 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
-  'other': 'bg-muted text-muted-foreground border-border',
-}
+import { cn, formatRelativeTime } from '@/lib/utils'
+import { PILLAR_LABELS, PILLAR_CLASSES, type SkimArticle } from '@/modules/skim/types'
+import { stripInspirationPrefix } from '@/modules/skim/lib/format'
 
 interface ArticleCardProps {
   article: SkimArticle
@@ -25,7 +19,7 @@ interface ArticleCardProps {
   onBuildModule: () => void
 }
 
-export function ArticleCard({ article, onOpen, onBuildModule }: ArticleCardProps) {
+function ArticleCardImpl({ article, onOpen, onBuildModule }: ArticleCardProps) {
   if (article.status === 'failed') return <FailedArticleCard article={article} onOpen={onOpen} />
   if (article.status === 'processing' || article.status === 'pending') {
     return <ProcessingArticleCard article={article} />
@@ -44,7 +38,7 @@ export function ArticleCard({ article, onOpen, onBuildModule }: ArticleCardProps
         </Badge>
         {article.source_name && <span className="text-xs text-muted-foreground">{article.source_name}</span>}
         <span className="text-xs text-muted-foreground/60">·</span>
-        <span className="text-xs text-muted-foreground">{formatRelative(article.created_at)}</span>
+        <span className="text-xs text-muted-foreground">{formatRelativeTime(new Date(article.created_at))}</span>
         {article.is_saved && <Bookmark className="w-3.5 h-3.5 text-amber-500 fill-amber-500 ml-auto" />}
       </div>
 
@@ -103,7 +97,7 @@ function FailedArticleCard({ article, onOpen }: { article: SkimArticle; onOpen: 
       <div className="flex items-center gap-2 mb-1">
         <AlertCircle className="w-4 h-4 text-red-500" />
         <span className="text-xs font-medium text-red-600 dark:text-red-400">Pipeline failed</span>
-        <span className="text-xs text-muted-foreground ml-auto">{formatRelative(article.created_at)}</span>
+        <span className="text-xs text-muted-foreground ml-auto">{formatRelativeTime(new Date(article.created_at))}</span>
       </div>
       <p className="text-sm font-medium mb-1 truncate">{article.original_title || article.url}</p>
       {article.error_message && (
@@ -125,27 +119,7 @@ function ProcessingArticleCard({ article }: { article: SkimArticle }) {
   )
 }
 
-function formatRelative(iso: string): string {
-  const d = new Date(iso).getTime()
-  const diffMs = Date.now() - d
-  const m = Math.floor(diffMs / 60000)
-  const h = Math.floor(diffMs / 3600000)
-  const days = Math.floor(diffMs / 86400000)
-  if (m < 1) return 'just now'
-  if (m < 60) return `${m}m ago`
-  if (h < 24) return `${h}h ago`
-  if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString()
-}
-
-// "Build a Foo module in ARI that does X." → "does X."
-// Falls back to the original line if the parse fails.
-function stripInspirationPrefix(inspiration: string, moduleName: string): string {
-  const pattern = new RegExp(`^\\s*Build a ${escapeRegExp(moduleName)} module in ARI that\\s+`, 'i')
-  const cleaned = inspiration.replace(pattern, '')
-  return cleaned === inspiration ? inspiration : cleaned
-}
-
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
+// Re-render only when the article shape or callbacks actually change. The
+// feed parent re-renders on every keystroke / filter change; without memo,
+// 100 visible cards would each re-render unnecessarily.
+export const ArticleCard = memo(ArticleCardImpl)

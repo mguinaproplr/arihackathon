@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Newspaper, Loader2, AlertCircle, Sparkles, Zap } from 'lucide-react'
 import { useSkimArticles } from '../hooks/use-skim'
+import { stripInspirationPrefix } from '../lib/format'
 
 export default function SkimWidget() {
   const { data: articles = [], isLoading, isError, refetch } = useSkimArticles({ status: 'ready', limit: 3 })
@@ -53,7 +54,7 @@ export default function SkimWidget() {
                   <div className="text-xs flex items-start gap-1 text-muted-foreground">
                     <Sparkles className="w-3 h-3 text-purple-500 mt-0.5 flex-shrink-0" />
                     <span className="line-clamp-2">
-                      <strong className="text-foreground">{a.suggested_module_name}</strong> — {a.ari_inspiration.replace(new RegExp(`^Build a ${a.suggested_module_name} module in ARI that\\s+`, 'i'), '')}
+                      <strong className="text-foreground">{a.suggested_module_name}</strong> — {stripInspirationPrefix(a.ari_inspiration, a.suggested_module_name)}
                     </span>
                   </div>
                 )}

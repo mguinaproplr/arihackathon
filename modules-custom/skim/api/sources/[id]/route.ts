@@ -17,6 +17,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 const idParam = z.string().uuid('Invalid source id')
+const idPathParams = z.object({ id: idParam }).openapi({ param: { name: 'id', in: 'path' } })
 
 registry.registerPath({
   method: 'patch',
@@ -25,7 +26,7 @@ registry.registerPath({
   summary: 'Update a Skim source (rename or toggle enabled)',
   tags: ['skim'],
   security: DEFAULT_SECURITY,
-  request: { body: { content: { 'application/json': { schema: updateSourceSchema } } } },
+  request: { params: idPathParams, body: { content: { 'application/json': { schema: updateSourceSchema } } } },
   responses: {
     200: { description: 'Updated source', content: { 'application/json': { schema: SourceSingleResponseSchema } } },
     400: { description: 'Validation error', content: { 'application/json': { schema: ErrorResponseSchema } } },
@@ -42,6 +43,7 @@ registry.registerPath({
   summary: 'Delete a Skim source',
   tags: ['skim'],
   security: DEFAULT_SECURITY,
+  request: { params: idPathParams },
   responses: {
     200: { description: 'Deleted', content: { 'application/json': { schema: DeleteSuccessSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },

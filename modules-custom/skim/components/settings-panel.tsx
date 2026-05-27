@@ -15,8 +15,7 @@ import { Loader2, ExternalLink } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useSkimSettings, useUpdateSkimSettings } from '../hooks/use-skim'
 import type { SkimSettings } from '../types'
-
-const DEFAULT_MODEL: SkimSettings['aiModel'] = 'gpt-4o-mini'
+import { DEFAULT_SKIM_MODEL } from '../lib/constants'
 
 export function SkimSettingsPanel() {
   const { toast } = useToast()
@@ -31,7 +30,7 @@ export function SkimSettingsPanel() {
     )
   }
 
-  const model = settings?.aiModel ?? DEFAULT_MODEL
+  const model = settings?.aiModel ?? DEFAULT_SKIM_MODEL
 
   const handleModelChange = (value: SkimSettings['aiModel']) => {
     updateSettings.mutate(
